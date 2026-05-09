@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { logger } from '../util/logger.js';
 
 export interface AgentInvocationResult {
   ok: boolean;
@@ -22,15 +21,13 @@ export interface AgentInvocationOptions {
 }
 
 /**
- * Invoke `claude` headlessly. Working spawn boilerplate; the surrounding
- * orchestration (prompt-building, finding the produced file, verifying the
- * path matches the expected gap) is the TODO.
+ * Invoke `claude` headlessly with the given prompt on stdin and return the
+ * captured stdout/stderr plus exit code. The caller is responsible for
+ * locating the file the agent wrote (we don't trust stdout to contain it).
  */
 export function invokeAgent(
   options: AgentInvocationOptions,
 ): Promise<AgentInvocationResult> {
-  logger.warn('TODO: prompt building / output capture for agent invoker');
-
   const args = [
     '--print',
     '--output-format',

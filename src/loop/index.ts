@@ -1,5 +1,5 @@
 import { logger } from '../util/logger.js';
-import { closeOne, type CloseOutcome } from '../close/index.js';
+import { closeForLoop, type CloseOutcome } from '../close/index.js';
 import { scan } from '../score/index.js';
 import { BudgetTracker } from './budget-tracker.js';
 import { IterationLogger, type LoopLogConfig } from './iteration-logger.js';
@@ -41,7 +41,7 @@ export interface LoopDeps {
 
 const defaultDeps: LoopDeps = {
   scan,
-  close: closeOne,
+  close: closeForLoop,
 };
 
 export async function runLoop(

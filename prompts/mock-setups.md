@@ -7,9 +7,8 @@ real catalog gets populated by `discover/mock-catalog.ts`.
 ## pre.unauthed
 
 ```ts
-// TODO: stub — unauthenticated MockClient.
-const medplum = new MockClient();
-// no auth setup; user is signed out
+// Unauthenticated MockClient — no signed-in user.
+const medplum = new MockClient({ profile: null });
 ```
 
 ## pre.practitioner.empty

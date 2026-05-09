@@ -1,14 +1,19 @@
-import type { Manifest } from '../schema/manifest.js';
+import type { Manifest, UnitStatus } from '../schema/manifest.js';
 
 export interface CloseDelta {
+  /** Net change in COVERED unit count (after - before). */
   covered: number;
+  /** Net change in PARTIAL unit count (after - before). */
   partial: number;
 }
 
-/**
- * Compute and write the close report (Before / Generated Test / After /
- * Verify if run). TODO: actual diff computation and Markdown rendering.
- */
-export function computeDelta(_before: Manifest, _after: Manifest): CloseDelta {
-  throw new Error('TODO: implement delta computation');
+export function computeDelta(before: Manifest, after: Manifest): CloseDelta {
+  return {
+    covered: countByStatus(after, 'COVERED') - countByStatus(before, 'COVERED'),
+    partial: countByStatus(after, 'PARTIAL') - countByStatus(before, 'PARTIAL'),
+  };
+}
+
+function countByStatus(m: Manifest, s: UnitStatus): number {
+  return m.units.filter((u) => u.status === s).length;
 }

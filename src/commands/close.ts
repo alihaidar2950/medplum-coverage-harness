@@ -1,5 +1,24 @@
 import { Command, Flags } from '@oclif/core';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { logger } from '../util/logger.js';
+import {
+  ensureReportsDir,
+  isoTimestampForFilename,
+  manifestPath,
+} from '../util/paths.js';
+import { writeManifest } from '../util/yaml.js';
+import { scan as runScan } from '../score/index.js';
+import { closeOne } from '../close/index.js';
+import type { Strategy } from '../close/gap-picker.js';
+import { renderCloseReport } from '../report/close-report.js';
+
+const VALID_STRATEGIES: Strategy[] = [
+  'highest-priority',
+  'regression-first',
+  'fewest-deps',
+  'random',
+];
 
 export default class Close extends Command {
   static override description =
@@ -14,7 +33,7 @@ export default class Close extends Command {
     gap: Flags.string({ description: 'Specific unit id to close' }),
     strategy: Flags.string({
       description: 'Gap picker strategy if --gap is not provided',
-      options: ['highest-priority', 'regression-first', 'fewest-deps', 'random'],
+      options: VALID_STRATEGIES,
       default: 'highest-priority',
     }),
     verify: Flags.boolean({
@@ -25,16 +44,52 @@ export default class Close extends Command {
 
   async run(): Promise<void> {
     const { flags } = await this.parse(Close);
-    logger.warn('not yet implemented: close');
-    logger.info(
-      `expected behavior (gap=${flags.gap ?? '<picked>'}, strategy=${flags.strategy}, verify=${flags.verify}):\n` +
-        '  1. pick gap (--gap > strategy)\n' +
-        '  2. render close-gap.md prompt with surface/precondition/behavior\n' +
-        '  3. spawn `claude --print` to write test file at packages/app/src/<surface-path>/<surface-name>.<beh>.test.tsx\n' +
-        '  4. if --verify: spawn `npx jest <file>` in target repo (failure does NOT block COVERED)\n' +
-        '  5. re-score, write reports/close-<ISO>.md (Before / Generated Test / After / Verify)\n' +
-        '  exit codes: 0 success, 1 agent failed, 2 produced test did not match gap, 3 internal error',
-    );
-    this.exit(3);
+    const generatedAt = new Date().toISOString();
+
+    try {
+      // Always scan first so we close against the freshest state.
+      const before = await runScan({ generatedAt });
+
+      const result = await closeOne(before, {
+        strategy: flags.strategy as Strategy,
+        verify: flags.verify,
+        gapId: flags.gap,
+      });
+
+      // Persist the post-close (re-scored) manifest.
+      writeManifest(manifestPath(), result.after);
+
+      const reportsDir = ensureReportsDir();
+      const reportPath = path.join(
+        reportsDir,
+        `close-${isoTimestampForFilename(new Date(generatedAt))}.md`,
+      );
+      fs.writeFileSync(reportPath, renderCloseReport(result, generatedAt), 'utf8');
+
+      logger.info(
+        `close: gap=${result.outcome.gapPicked} agent=${result.outcome.agentOutcome}` +
+          (result.outcome.verifyOutcome ? ` verify=${result.outcome.verifyOutcome}` : '') +
+          ` delta=covered${signed(result.outcome.delta.covered)}/partial${signed(result.outcome.delta.partial)}`,
+      );
+      logger.info(`report: ${reportPath}`);
+
+      // Exit codes per the design contract:
+      //   0 success
+      //   1 agent failed
+      //   2 produced test did not match the gap (currently treated as agent failure)
+      //   3 internal error (covered by the catch below)
+      if (result.outcome.agentOutcome === 'failure') {
+        if (result.reason) logger.warn(result.reason);
+        this.exit(1);
+      }
+      this.exit(0);
+    } catch (err) {
+      logger.error('close failed:', err instanceof Error ? err.message : String(err));
+      this.exit(3);
+    }
   }
+}
+
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : `${n}`;
 }

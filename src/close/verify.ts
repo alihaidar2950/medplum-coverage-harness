@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import { logger } from '../util/logger.js';
 
 export type VerifyOutcome =
   | 'compile-ok-tests-pass'
@@ -16,21 +15,24 @@ export interface VerifyResult {
 }
 
 export interface VerifyOptions {
-  /** Path to the generated test file, relative to or under targetRepo. */
+  /** Path to the generated test file, repo-relative or absolute. */
   testFile: string;
-  /** Target repo cwd (medplum root). */
+  /** Target repo root (e.g. medplum/). Jest is invoked here. */
   targetRepo: string;
   timeoutMs?: number;
 }
 
-/**
- * Spawn `npx jest <file>` in the target repo. Working spawn boilerplate;
- * the outcome classifier (compile-failed vs tests-fail vs tests-pass) is
- * the TODO — needs Jest stderr/stdout heuristics.
- */
-export function runVerify(options: VerifyOptions): Promise<VerifyResult> {
-  logger.warn('TODO: result parsing for verify');
+const COMPILE_FAILURE_PATTERNS = [
+  /Test suite failed to run/i,
+  /TSError/,
+  /SyntaxError/,
+  /Cannot find module/,
+  /Cannot find name/,
+  /Unexpected token/,
+  /Could not parse/,
+];
 
+export function runVerify(options: VerifyOptions): Promise<VerifyResult> {
   return new Promise((resolve) => {
     const startedAt = Date.now();
     const child = spawn('npx', ['jest', options.testFile], {
@@ -62,9 +64,12 @@ export function runVerify(options: VerifyOptions): Promise<VerifyResult> {
 
     child.on('close', (code) => {
       if (timer) clearTimeout(timer);
-      // TODO: real classifier. For now, exit 0 → tests-pass, non-zero → tests-fail.
-      const outcome: VerifyOutcome =
-        code === 0 ? 'compile-ok-tests-pass' : 'compile-ok-tests-fail';
+      const combined = `${stdout}\n${stderr}`;
+      const compileFailed = COMPILE_FAILURE_PATTERNS.some((re) => re.test(combined));
+      let outcome: VerifyOutcome;
+      if (compileFailed) outcome = 'compile-failed';
+      else if (code === 0) outcome = 'compile-ok-tests-pass';
+      else outcome = 'compile-ok-tests-fail';
       resolve({
         outcome,
         exitCode: code,
