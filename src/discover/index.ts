@@ -99,6 +99,121 @@ function isAuthRoute(route: string): boolean {
   return AUTH_PREFIXES.some((p) => route === p || route.startsWith(p + '/'));
 }
 
+/**
+ * Surface category. Drives both behavior whitelist and (incidentally) the
+ * priority assignment. Categories are observable from the route alone — no
+ * per-surface annotation required, so adding a new route just slots in.
+ */
+export type SurfaceCategory =
+  | 'auth'
+  | 'resource-list'
+  | 'resource-detail-key'
+  | 'resource-detail-tab'
+  | 'resource-create'
+  | 'admin-form'
+  | 'admin-list'
+  | 'debug'
+  | 'default';
+
+export function categorize(route: string): SurfaceCategory {
+  if (isAuthRoute(route)) return 'auth';
+  // Clinical/data-list surfaces
+  if (route === '/' || route === '/:resourceType' || route.startsWith('/lab/')) {
+    return 'resource-list';
+  }
+  // Resource creation flows (form-y, no resource id yet)
+  if (
+    route === '/:resourceType/new' ||
+    route.startsWith('/:resourceType/new/')
+  ) {
+    return 'resource-create';
+  }
+  // Resource detail: parent + key sub-routes (edit, delete, details, history)
+  if (route === '/:resourceType/:id') return 'resource-detail-key';
+  if (route.startsWith('/:resourceType/:id/')) {
+    if (/\/(edit|delete|details|history|_history)(\/|$)/.test(route)) {
+      // history sub-routes are still "key" — they expose audit info
+      return 'resource-detail-key';
+    }
+    return 'resource-detail-tab';
+  }
+  // Admin surfaces. Forms (new/invite/config) vs list pages.
+  if (route === '/admin') return 'admin-list';
+  if (route.startsWith('/admin/')) {
+    if (/\/(new|invite|config)(\/|$)/.test(route)) return 'admin-form';
+    if (route === '/admin/config') return 'admin-form';
+    return 'admin-list';
+  }
+  // Debug / utility surfaces
+  if (
+    route === '/batch' ||
+    route === '/smart' ||
+    route === '/security' ||
+    route.startsWith('/forms') ||
+    route.startsWith('/bulk')
+  ) {
+    return 'debug';
+  }
+  return 'default';
+}
+
+/**
+ * Behavior whitelist per category. Three goals:
+ *   1. Skip combinations that don't make sense (e.g. form-submit-success on a
+ *      list page where there is no form).
+ *   2. Surface healthcare-specific behaviors only where they apply
+ *      (phi-masked + consent-honored on resource detail; audit-event-emitted
+ *      on writes and admin actions).
+ *   3. Keep the manifest's unit count proportional to actual risk surface
+ *      area instead of a uniform Cartesian product.
+ */
+const BEHAVIORS_BY_CATEGORY: Record<SurfaceCategory, BehaviorId[]> = {
+  auth: [
+    'beh.renders',
+    'beh.form-submit-success',
+    'beh.form-validation-error',
+    'beh.navigates',
+  ],
+  'resource-list': [
+    'beh.renders',
+    'beh.list-displayed',
+    'beh.empty-state',
+    'beh.phi-masked',
+    'beh.navigates',
+  ],
+  'resource-detail-key': [
+    'beh.renders',
+    'beh.navigates',
+    'beh.phi-masked',
+    'beh.audit-event-emitted',
+    'beh.consent-honored',
+  ],
+  'resource-detail-tab': [
+    'beh.renders',
+    'beh.navigates',
+    'beh.phi-masked',
+  ],
+  'resource-create': [
+    'beh.renders',
+    'beh.form-submit-success',
+    'beh.form-validation-error',
+  ],
+  'admin-form': [
+    'beh.renders',
+    'beh.form-submit-success',
+    'beh.form-validation-error',
+    'beh.audit-event-emitted',
+  ],
+  'admin-list': [
+    'beh.renders',
+    'beh.list-displayed',
+    'beh.navigates',
+    'beh.audit-event-emitted',
+  ],
+  debug: ['beh.renders', 'beh.error-state'],
+  default: ['beh.renders', 'beh.error-state'],
+};
+
 function priorityFor(route: string): Priority {
   if (route === '/') return 'P0';
   if (isAuthRoute(route)) return 'P0';
@@ -126,13 +241,14 @@ function buildUnits(surfaces: Surface[], preconditions: Precondition[]): Unit[] 
   for (const surface of surfaces) {
     const priority = priorityFor(surface.route);
     const pres = preconditionsForSurface(surface, preconditions);
+    const behaviors = BEHAVIORS_BY_CATEGORY[categorize(surface.route)];
     for (const pre of pres) {
-      for (const beh of BEHAVIORS) {
+      for (const behId of behaviors) {
         units.push({
-          id: unitId(surface, pre, beh.id),
+          id: unitId(surface, pre, behId),
           surface: surface.id,
           precondition: pre.id,
-          behavior: beh.id,
+          behavior: behId,
           priority,
           status: 'GAP',
           covered_by: [],

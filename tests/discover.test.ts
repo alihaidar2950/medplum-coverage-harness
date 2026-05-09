@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverRoutesFromFile } from '../src/discover/routes.js';
-import { discover } from '../src/discover/index.js';
+import { categorize, discover } from '../src/discover/index.js';
 import { parseManifest } from '../src/schema/manifest.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -156,4 +156,126 @@ describe('discover() — manifest assembly', () => {
     // assert there's at least one per applicable precondition.
     expect(homeUnits.length).toBeGreaterThan(0);
   });
+});
+
+describe('categorize() — surface category routing', () => {
+  it('classifies auth routes', () => {
+    expect(categorize('/signin')).toBe('auth');
+    expect(categorize('/oauth')).toBe('auth');
+    expect(categorize('/setpassword/:id/:secret')).toBe('auth');
+    expect(categorize('/mfa')).toBe('auth');
+  });
+
+  it('classifies resource list surfaces', () => {
+    expect(categorize('/')).toBe('resource-list');
+    expect(categorize('/:resourceType')).toBe('resource-list');
+    expect(categorize('/lab/assays')).toBe('resource-list');
+  });
+
+  it('classifies resource detail key vs tab', () => {
+    expect(categorize('/:resourceType/:id')).toBe('resource-detail-key');
+    expect(categorize('/:resourceType/:id/edit')).toBe('resource-detail-key');
+    expect(categorize('/:resourceType/:id/delete')).toBe('resource-detail-key');
+    expect(categorize('/:resourceType/:id/details')).toBe('resource-detail-key');
+    expect(categorize('/:resourceType/:id/history')).toBe('resource-detail-key');
+    expect(categorize('/:resourceType/:id/_history/:versionId')).toBe('resource-detail-key');
+    expect(categorize('/:resourceType/:id/timeline')).toBe('resource-detail-tab');
+    expect(categorize('/:resourceType/:id/json')).toBe('resource-detail-tab');
+  });
+
+  it('classifies resource creation flows', () => {
+    expect(categorize('/:resourceType/new')).toBe('resource-create');
+    expect(categorize('/:resourceType/new/form')).toBe('resource-create');
+    expect(categorize('/:resourceType/new/json')).toBe('resource-create');
+  });
+
+  it('classifies admin forms vs admin lists', () => {
+    expect(categorize('/admin')).toBe('admin-list');
+    expect(categorize('/admin/bots')).toBe('admin-list');
+    expect(categorize('/admin/users/:membershipId')).toBe('admin-list');
+    expect(categorize('/admin/bots/new')).toBe('admin-form');
+    expect(categorize('/admin/clients/new')).toBe('admin-form');
+    expect(categorize('/admin/invite')).toBe('admin-form');
+    expect(categorize('/admin/config')).toBe('admin-form');
+  });
+
+  it('classifies debug surfaces', () => {
+    expect(categorize('/batch')).toBe('debug');
+    expect(categorize('/smart')).toBe('debug');
+    expect(categorize('/security')).toBe('debug');
+    expect(categorize('/forms/:id')).toBe('debug');
+    expect(categorize('/bulk/:resourceType')).toBe('debug');
+  });
+});
+
+describe('per-category behavior whitelist', () => {
+  // Build one canonical surface per category by route, then assert which
+  // behaviors made it into the manifest for each.
+  const probeRoutes: Array<[string, string[]]> = [
+    [
+      '/signin',
+      ['beh.renders', 'beh.form-submit-success', 'beh.form-validation-error', 'beh.navigates'],
+    ],
+    [
+      '/',
+      [
+        'beh.renders',
+        'beh.list-displayed',
+        'beh.empty-state',
+        'beh.phi-masked',
+        'beh.navigates',
+      ],
+    ],
+    [
+      '/:resourceType/:id',
+      [
+        'beh.renders',
+        'beh.navigates',
+        'beh.phi-masked',
+        'beh.audit-event-emitted',
+        'beh.consent-honored',
+      ],
+    ],
+    [
+      '/:resourceType/:id/timeline',
+      ['beh.renders', 'beh.navigates', 'beh.phi-masked'],
+    ],
+    [
+      '/:resourceType/new',
+      ['beh.renders', 'beh.form-submit-success', 'beh.form-validation-error'],
+    ],
+    [
+      '/admin/bots/new',
+      [
+        'beh.renders',
+        'beh.form-submit-success',
+        'beh.form-validation-error',
+        'beh.audit-event-emitted',
+      ],
+    ],
+    [
+      '/admin/bots',
+      ['beh.renders', 'beh.list-displayed', 'beh.navigates', 'beh.audit-event-emitted'],
+    ],
+    ['/batch', ['beh.renders', 'beh.error-state']],
+  ];
+
+  for (const [route, expectedBehaviors] of probeRoutes) {
+    it(`${route} emits exactly the whitelisted behaviors`, () => {
+      const m = discover({
+        targetRepo: FIXTURE_DIR,
+        generatedAt: '2026-05-09T14:00:00.000Z',
+        routes: [
+          {
+            route,
+            component: 'Probe',
+            componentImportPath: './Probe',
+            line: 1,
+          },
+        ],
+      });
+      const got = [...new Set(m.units.map((u) => u.behavior))].sort();
+      expect(got).toEqual([...expectedBehaviors].sort());
+    });
+  }
 });
