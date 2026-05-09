@@ -12,6 +12,7 @@ import { scan as runScan } from '../score/index.js';
 import { closeOne } from '../close/index.js';
 import type { Strategy } from '../close/gap-picker.js';
 import { renderCloseReport } from '../report/close-report.js';
+import { validatePromptReferences } from '../schema/refs.js';
 
 const VALID_STRATEGIES: Strategy[] = [
   'highest-priority',
@@ -49,6 +50,14 @@ export default class Close extends Command {
     try {
       // Always scan first so we close against the freshest state.
       const before = await runScan({ generatedAt });
+
+      // Fail fast if prompt refs are dangling — closing a gap with bad refs
+      // sends placeholder text to the agent and produces a worthless test.
+      const refs = validatePromptReferences(before);
+      if (!refs.ok) {
+        for (const e of refs.errors) logger.error(e);
+        throw new Error(`prompt reference validation failed (${refs.errors.length} error(s))`);
+      }
 
       const result = await closeOne(before, {
         strategy: flags.strategy as Strategy,

@@ -12,6 +12,7 @@ import { readManifest, writeManifest } from '../util/yaml.js';
 import { scan as runScan } from '../score/index.js';
 import { detectRegressions } from '../score/regression-detector.js';
 import { renderScanReport } from '../report/scan-report.js';
+import { validatePromptReferences } from '../schema/refs.js';
 import type { Manifest } from '../schema/manifest.js';
 
 export default class Scan extends Command {
@@ -39,6 +40,13 @@ export default class Scan extends Command {
       }
 
       const fresh = await runScan({ generatedAt });
+
+      const refs = validatePromptReferences(fresh);
+      if (!refs.ok) {
+        for (const e of refs.errors) logger.error(e);
+        throw new Error(`prompt reference validation failed (${refs.errors.length} error(s))`);
+      }
+
       const { manifest, diff } = detectRegressions(previous, fresh);
 
       writeManifest(manifestPath(), manifest);
