@@ -28,6 +28,12 @@ export const BehaviorIdSchema = z.enum([
   'beh.navigates',
   'beh.empty-state',
   'beh.error-state',
+  // Healthcare-specific behaviors. These are deliberately part of the core
+  // vocabulary (not an extension axis) because they capture clinical risk that
+  // generic UI verbs cannot express.
+  'beh.phi-masked',
+  'beh.audit-event-emitted',
+  'beh.consent-honored',
 ]);
 
 export const BehaviorSchema = z.object({

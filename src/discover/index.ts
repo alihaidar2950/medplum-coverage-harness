@@ -27,6 +27,9 @@ const BEHAVIORS: Behavior[] = [
   { id: 'beh.navigates', description: 'click navigates to a new route', assertion_ref: 'prompts/behavior-assertions.md#beh.navigates' },
   { id: 'beh.empty-state', description: 'with zero resources, empty-state UI is rendered', assertion_ref: 'prompts/behavior-assertions.md#beh.empty-state' },
   { id: 'beh.error-state', description: 'failed FHIR call yields error UI', assertion_ref: 'prompts/behavior-assertions.md#beh.error-state' },
+  { id: 'beh.phi-masked', description: 'unauthorized roles do not see PHI fields; authorized roles do', assertion_ref: 'prompts/behavior-assertions.md#beh.phi-masked' },
+  { id: 'beh.audit-event-emitted', description: 'audit-relevant actions emit AuditEvent FHIR resources', assertion_ref: 'prompts/behavior-assertions.md#beh.audit-event-emitted' },
+  { id: 'beh.consent-honored', description: 'Consent resource restrictions are honored by the surface', assertion_ref: 'prompts/behavior-assertions.md#beh.consent-honored' },
 ];
 
 /**

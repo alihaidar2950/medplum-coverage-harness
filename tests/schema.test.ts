@@ -90,4 +90,13 @@ describe('parseManifest', () => {
     bad.units[0].surface = 'signin';
     expect(() => parseManifest(bad)).toThrow();
   });
+
+  it('accepts the three healthcare-specific behavior ids', () => {
+    for (const id of ['beh.phi-masked', 'beh.audit-event-emitted', 'beh.consent-honored'] as const) {
+      const m = structuredClone(baseManifest);
+      m.behaviors = [{ id, description: '', assertion_ref: '' }];
+      m.units[0].behavior = id;
+      expect(() => parseManifest(m)).not.toThrow();
+    }
+  });
 });
