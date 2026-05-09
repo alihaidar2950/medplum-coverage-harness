@@ -1,0 +1,6 @@
+node_modules/
+dist/
+reports/
+coverage.manifest.previous.yaml
+*.log
+.DS_Store

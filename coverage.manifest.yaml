@@ -1,0 +1,10 @@
+version: 1
+generated_at: "2026-05-09T00:00:00.000Z"
+target:
+  repo: "../medplum"
+  scope:
+    - "packages/app/src"
+surfaces: []
+preconditions: []
+behaviors: []
+units: []

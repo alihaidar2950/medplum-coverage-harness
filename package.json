@@ -1,0 +1,41 @@
+{
+  "name": "medplum-coverage-harness",
+  "version": "0.1.0",
+  "description": "Closed-loop test coverage harness for medplum/packages/app",
+  "type": "module",
+  "bin": {
+    "harness": "./bin/run.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "prompts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "harness": "node ./bin/run.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@oclif/core": "^4.0.0",
+    "ts-morph": "^22.0.0",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "oclif": {
+    "bin": "harness",
+    "dirname": "harness",
+    "commands": "./dist/commands",
+    "topicSeparator": " "
+  }
+}

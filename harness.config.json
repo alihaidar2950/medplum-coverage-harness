@@ -1,0 +1,4 @@
+{
+  "target": "../medplum",
+  "scope": ["packages/app/src"]
+}
