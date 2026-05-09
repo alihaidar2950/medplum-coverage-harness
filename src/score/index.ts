@@ -1,14 +1,32 @@
 import type { Manifest } from '../schema/manifest.js';
+import { discover } from '../discover/index.js';
+import { loadConfig, resolveTargetPath } from '../util/paths.js';
 
-/**
- * Top-level scoring entry: parses existing tests, matches them to units,
- * and applies regression detection by diffing against the previous manifest
- * (if one exists). Returns the new manifest.
- */
-export async function scan(): Promise<Manifest> {
-  throw new Error('TODO: implement score/scan step');
+export interface ScanOptions {
+  /** Override the target repo path; otherwise read from harness.config.json. */
+  targetRepo?: string;
+  generatedAt?: string;
 }
 
-export function scoreUnits(_manifest: Manifest): Manifest {
-  throw new Error('TODO: implement unit scoring');
+/**
+ * Top-level scan: discover catalogs, build the manifest, then score
+ * existing tests against units. Scoring is currently TODO — for now this
+ * returns the discover-only manifest (every unit GAP).
+ */
+export async function scan(opts: ScanOptions = {}): Promise<Manifest> {
+  const targetRepo =
+    opts.targetRepo ??
+    resolveTargetPath(loadConfig());
+
+  const manifest = discover({ targetRepo, generatedAt: opts.generatedAt });
+  return scoreUnits(manifest);
+}
+
+/**
+ * Upgrade unit statuses from GAP → COVERED/PARTIAL based on parsed tests.
+ * TODO: implement the test parser → unit matcher pipeline. For now this is
+ * the identity so scan returns a discover-only manifest.
+ */
+export function scoreUnits(manifest: Manifest): Manifest {
+  return manifest;
 }
