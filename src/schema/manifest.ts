@@ -18,6 +18,15 @@ export const PreconditionSchema = z.object({
     }),
   ),
   mock_setup_ref: z.string(),
+  /**
+   * Optional inline snippet used by auto-discovered preconditions that don't
+   * have a hand-written section in prompts/mock-setups.md. When present, the
+   * ref is decorative and the prompt builder uses this verbatim. The ref
+   * validator skips the file-anchor check for entries with an inline snippet.
+   */
+  mock_setup_snippet: z.string().optional(),
+  /** True for catalog entries synthesized from observed MockClient setups. */
+  auto_discovered: z.boolean().optional(),
 });
 
 export const BehaviorIdSchema = z.enum([

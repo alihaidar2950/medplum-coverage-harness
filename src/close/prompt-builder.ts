@@ -31,10 +31,11 @@ export interface BuiltPrompt {
 export function buildClosePrompt(inputs: PromptInputs): BuiltPrompt {
   const root = harnessRoot();
   const template = fs.readFileSync(path.join(root, 'prompts/close-gap.md'), 'utf8');
-  const mockSetups = readSection(
-    path.join(root, 'prompts/mock-setups.md'),
-    inputs.precondition.id,
-  );
+  // Prefer an inline snippet (auto-discovered preconditions ship with one);
+  // fall back to the markdown section pointed at by mock_setup_ref.
+  const mockSetups =
+    inputs.precondition.mock_setup_snippet ??
+    readSection(path.join(root, 'prompts/mock-setups.md'), inputs.precondition.id);
   const assertion = readSection(
     path.join(root, 'prompts/behavior-assertions.md'),
     inputs.behavior.id,

@@ -1,5 +1,5 @@
 version: 1
-generated_at: 2026-05-09T23:58:02.961Z
+generated_at: 2026-05-10T09:54:29.870Z
 target:
   repo: /home/ali/projects/medplum
   scope:
@@ -311,6 +311,22 @@ preconditions:
       - resourceType: Project
         count: 1
     mock_setup_ref: prompts/mock-setups.md#pre.admin.with-project
+  - id: pre.admin.with-patient
+    description: "auto-discovered: admin signed in, 1 Patient (seen in 1 test file(s))"
+    auth: admin
+    resources:
+      - resourceType: Patient
+        count: 1
+    mock_setup_ref: auto-discovered
+    mock_setup_snippet: |-
+      // Auto-discovered MockClient setup. Adjust resource fields to match the surface under test.
+      const medplum = new MockClient();
+      medplum.setActiveLoginOverride({
+        accessToken: 'fake', refreshToken: 'fake',
+        profile: { resourceType: 'ProjectMembership', admin: true } as any,
+      });
+      await medplum.createResource({ resourceType: 'Patient', /* TODO: fields */ });
+    auto_discovered: true
 behaviors:
   - id: beh.renders
     description: component mounts without throwing
@@ -771,6 +787,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.super.admin.with-patient.renders
+    surface: surface.admin.super
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.admin.with-patient.list-displayed
+    surface: surface.admin.super
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.admin.with-patient.navigates
+    surface: surface.admin.super
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.admin.with-patient.audit-event-emitted
+    surface: surface.admin.super
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.super.asyncjob.~tab.admin.empty.renders
     surface: surface.admin.super.asyncjob.~tab
     precondition: pre.admin.empty
@@ -823,6 +867,34 @@ units:
   - id: unit.admin.super.asyncjob.~tab.admin.with-project.audit-event-emitted
     surface: surface.admin.super.asyncjob.~tab
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.asyncjob.~tab.admin.with-patient.renders
+    surface: surface.admin.super.asyncjob.~tab
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.asyncjob.~tab.admin.with-patient.list-displayed
+    surface: surface.admin.super.asyncjob.~tab
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.asyncjob.~tab.admin.with-patient.navigates
+    surface: surface.admin.super.asyncjob.~tab
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.asyncjob.~tab.admin.with-patient.audit-event-emitted
+    surface: surface.admin.super.asyncjob.~tab
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -883,6 +955,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.super.asyncjob.admin.with-patient.renders
+    surface: surface.admin.super.asyncjob
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.asyncjob.admin.with-patient.list-displayed
+    surface: surface.admin.super.asyncjob
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.asyncjob.admin.with-patient.navigates
+    surface: surface.admin.super.asyncjob
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.asyncjob.admin.with-patient.audit-event-emitted
+    surface: surface.admin.super.asyncjob
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.super.db.~tab.admin.empty.renders
     surface: surface.admin.super.db.~tab
     precondition: pre.admin.empty
@@ -935,6 +1035,34 @@ units:
   - id: unit.admin.super.db.~tab.admin.with-project.audit-event-emitted
     surface: surface.admin.super.db.~tab
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.db.~tab.admin.with-patient.renders
+    surface: surface.admin.super.db.~tab
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.db.~tab.admin.with-patient.list-displayed
+    surface: surface.admin.super.db.~tab
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.db.~tab.admin.with-patient.navigates
+    surface: surface.admin.super.db.~tab
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.db.~tab.admin.with-patient.audit-event-emitted
+    surface: surface.admin.super.db.~tab
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -995,6 +1123,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.super.db.admin.with-patient.renders
+    surface: surface.admin.super.db
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.db.admin.with-patient.list-displayed
+    surface: surface.admin.super.db
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.db.admin.with-patient.navigates
+    surface: surface.admin.super.db
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.super.db.admin.with-patient.audit-event-emitted
+    surface: surface.admin.super.db
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.config.admin.empty.renders
     surface: surface.admin.config
     precondition: pre.admin.empty
@@ -1047,6 +1203,34 @@ units:
   - id: unit.admin.config.admin.with-project.audit-event-emitted
     surface: surface.admin.config
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.config.admin.with-patient.renders
+    surface: surface.admin.config
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.config.admin.with-patient.form-submit-success
+    surface: surface.admin.config
+    precondition: pre.admin.with-patient
+    behavior: beh.form-submit-success
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.config.admin.with-patient.form-validation-error
+    surface: surface.admin.config
+    precondition: pre.admin.with-patient
+    behavior: beh.form-validation-error
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.config.admin.with-patient.audit-event-emitted
+    surface: surface.admin.config
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -1108,6 +1292,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.admin.with-patient.renders
+    surface: surface.admin
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.admin.with-patient.list-displayed
+    surface: surface.admin
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.admin.with-patient.navigates
+    surface: surface.admin
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.admin.with-patient.audit-event-emitted
+    surface: surface.admin
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.bots.~membershipId.admin.empty.renders
     surface: surface.admin.bots.~membershipId
     precondition: pre.admin.empty
@@ -1160,6 +1372,34 @@ units:
   - id: unit.admin.bots.~membershipId.admin.with-project.audit-event-emitted
     surface: surface.admin.bots.~membershipId
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.~membershipId.admin.with-patient.renders
+    surface: surface.admin.bots.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.~membershipId.admin.with-patient.list-displayed
+    surface: surface.admin.bots.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.~membershipId.admin.with-patient.navigates
+    surface: surface.admin.bots.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.~membershipId.admin.with-patient.audit-event-emitted
+    surface: surface.admin.bots.~membershipId
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -1222,6 +1462,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.bots.new.admin.with-patient.renders
+    surface: surface.admin.bots.new
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.new.admin.with-patient.form-submit-success
+    surface: surface.admin.bots.new
+    precondition: pre.admin.with-patient
+    behavior: beh.form-submit-success
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.new.admin.with-patient.form-validation-error
+    surface: surface.admin.bots.new
+    precondition: pre.admin.with-patient
+    behavior: beh.form-validation-error
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.new.admin.with-patient.audit-event-emitted
+    surface: surface.admin.bots.new
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.bots.admin.empty.renders
     surface: surface.admin.bots
     precondition: pre.admin.empty
@@ -1278,6 +1546,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.bots.admin.with-patient.renders
+    surface: surface.admin.bots
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.admin.with-patient.list-displayed
+    surface: surface.admin.bots
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.admin.with-patient.navigates
+    surface: surface.admin.bots
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.bots.admin.with-patient.audit-event-emitted
+    surface: surface.admin.bots
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.clients.~membershipId.admin.empty.renders
     surface: surface.admin.clients.~membershipId
     precondition: pre.admin.empty
@@ -1330,6 +1626,34 @@ units:
   - id: unit.admin.clients.~membershipId.admin.with-project.audit-event-emitted
     surface: surface.admin.clients.~membershipId
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.~membershipId.admin.with-patient.renders
+    surface: surface.admin.clients.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.~membershipId.admin.with-patient.list-displayed
+    surface: surface.admin.clients.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.~membershipId.admin.with-patient.navigates
+    surface: surface.admin.clients.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.~membershipId.admin.with-patient.audit-event-emitted
+    surface: surface.admin.clients.~membershipId
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -1392,6 +1716,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.clients.new.admin.with-patient.renders
+    surface: surface.admin.clients.new
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.new.admin.with-patient.form-submit-success
+    surface: surface.admin.clients.new
+    precondition: pre.admin.with-patient
+    behavior: beh.form-submit-success
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.new.admin.with-patient.form-validation-error
+    surface: surface.admin.clients.new
+    precondition: pre.admin.with-patient
+    behavior: beh.form-validation-error
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.new.admin.with-patient.audit-event-emitted
+    surface: surface.admin.clients.new
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.clients.admin.empty.renders
     surface: surface.admin.clients
     precondition: pre.admin.empty
@@ -1448,6 +1800,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.clients.admin.with-patient.renders
+    surface: surface.admin.clients
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.admin.with-patient.list-displayed
+    surface: surface.admin.clients
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.admin.with-patient.navigates
+    surface: surface.admin.clients
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.clients.admin.with-patient.audit-event-emitted
+    surface: surface.admin.clients
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.details.admin.empty.renders
     surface: surface.admin.details
     precondition: pre.admin.empty
@@ -1500,6 +1880,34 @@ units:
   - id: unit.admin.details.admin.with-project.audit-event-emitted
     surface: surface.admin.details
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.details.admin.with-patient.renders
+    surface: surface.admin.details
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.details.admin.with-patient.list-displayed
+    surface: surface.admin.details
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.details.admin.with-patient.navigates
+    surface: surface.admin.details
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.details.admin.with-patient.audit-event-emitted
+    surface: surface.admin.details
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -1562,6 +1970,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.invite.admin.with-patient.renders
+    surface: surface.admin.invite
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.invite.admin.with-patient.form-submit-success
+    surface: surface.admin.invite
+    precondition: pre.admin.with-patient
+    behavior: beh.form-submit-success
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.invite.admin.with-patient.form-validation-error
+    surface: surface.admin.invite
+    precondition: pre.admin.with-patient
+    behavior: beh.form-validation-error
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.invite.admin.with-patient.audit-event-emitted
+    surface: surface.admin.invite
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.users.~membershipId.admin.empty.renders
     surface: surface.admin.users.~membershipId
     precondition: pre.admin.empty
@@ -1614,6 +2050,34 @@ units:
   - id: unit.admin.users.~membershipId.admin.with-project.audit-event-emitted
     surface: surface.admin.users.~membershipId
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.users.~membershipId.admin.with-patient.renders
+    surface: surface.admin.users.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.users.~membershipId.admin.with-patient.list-displayed
+    surface: surface.admin.users.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.users.~membershipId.admin.with-patient.navigates
+    surface: surface.admin.users.~membershipId
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.users.~membershipId.admin.with-patient.audit-event-emitted
+    surface: surface.admin.users.~membershipId
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -1674,6 +2138,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.users.admin.with-patient.renders
+    surface: surface.admin.users
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.users.admin.with-patient.list-displayed
+    surface: surface.admin.users
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.users.admin.with-patient.navigates
+    surface: surface.admin.users
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.users.admin.with-patient.audit-event-emitted
+    surface: surface.admin.users
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.project.admin.empty.renders
     surface: surface.admin.project
     precondition: pre.admin.empty
@@ -1726,6 +2218,34 @@ units:
   - id: unit.admin.project.admin.with-project.audit-event-emitted
     surface: surface.admin.project
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.project.admin.with-patient.renders
+    surface: surface.admin.project
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.project.admin.with-patient.list-displayed
+    surface: surface.admin.project
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.project.admin.with-patient.navigates
+    surface: surface.admin.project
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.project.admin.with-patient.audit-event-emitted
+    surface: surface.admin.project
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP
@@ -1787,6 +2307,34 @@ units:
     priority: P2
     status: GAP
     covered_by: []
+  - id: unit.admin.secrets.admin.with-patient.renders
+    surface: surface.admin.secrets
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.secrets.admin.with-patient.list-displayed
+    surface: surface.admin.secrets
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.secrets.admin.with-patient.navigates
+    surface: surface.admin.secrets
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.secrets.admin.with-patient.audit-event-emitted
+    surface: surface.admin.secrets
+    precondition: pre.admin.with-patient
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
   - id: unit.admin.sites.admin.empty.renders
     surface: surface.admin.sites
     precondition: pre.admin.empty
@@ -1840,6 +2388,34 @@ units:
   - id: unit.admin.sites.admin.with-project.audit-event-emitted
     surface: surface.admin.sites
     precondition: pre.admin.with-project
+    behavior: beh.audit-event-emitted
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.sites.admin.with-patient.renders
+    surface: surface.admin.sites
+    precondition: pre.admin.with-patient
+    behavior: beh.renders
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.sites.admin.with-patient.list-displayed
+    surface: surface.admin.sites
+    precondition: pre.admin.with-patient
+    behavior: beh.list-displayed
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.sites.admin.with-patient.navigates
+    surface: surface.admin.sites
+    precondition: pre.admin.with-patient
+    behavior: beh.navigates
+    priority: P2
+    status: GAP
+    covered_by: []
+  - id: unit.admin.sites.admin.with-patient.audit-event-emitted
+    surface: surface.admin.sites
+    precondition: pre.admin.with-patient
     behavior: beh.audit-event-emitted
     priority: P2
     status: GAP

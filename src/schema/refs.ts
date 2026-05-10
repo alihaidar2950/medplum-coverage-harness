@@ -24,6 +24,8 @@ export function validatePromptReferences(
   const errors: string[] = [];
 
   for (const pre of manifest.preconditions) {
+    // Inline snippets bypass the ref check — the ref string is decorative.
+    if (pre.mock_setup_snippet && pre.mock_setup_snippet.length > 0) continue;
     const err = checkRef(rootDir, pre.mock_setup_ref, 'precondition', pre.id);
     if (err) errors.push(err);
   }
