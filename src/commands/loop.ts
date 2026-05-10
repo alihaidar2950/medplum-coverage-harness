@@ -44,8 +44,10 @@ export default class Loop extends Command {
         verify: flags.verify,
       });
       logger.info(
-        `loop finished after ${result.iterationsRun} iteration(s); reason=${result.stoppedBecause}; log=${result.logPath}`,
+        `loop finished after ${result.iterationsRun} iteration(s); reason=${result.stoppedBecause}`,
       );
+      logger.info(`report: ${result.reportPath}`);
+      logger.info(`log:    ${result.logPath}`);
       this.exit(result.isGuardrail ? 4 : 0);
     } catch (err) {
       logger.error('loop failed:', err instanceof Error ? err.message : String(err));

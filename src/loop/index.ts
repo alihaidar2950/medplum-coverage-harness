@@ -1,6 +1,10 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { logger } from '../util/logger.js';
 import { closeForLoop, type CloseOutcome } from '../close/index.js';
 import { scan } from '../score/index.js';
+import { ensureReportsDir, isoTimestampForFilename } from '../util/paths.js';
+import { renderLoopReport } from '../report/loop-report.js';
 import { BudgetTracker } from './budget-tracker.js';
 import { IterationLogger, type LoopLogConfig } from './iteration-logger.js';
 import {
@@ -27,6 +31,7 @@ export interface LoopResult {
   isGuardrail: boolean;
   iterationsRun: number;
   logPath: string;
+  reportPath: string;
 }
 
 /**
@@ -90,6 +95,7 @@ export async function runLoop(
     if (check.shouldStop) {
       const reason = check.reason ?? 'iterations>=N';
       iterLog.finish(reason, check.isGuardrail, new Date(now()).toISOString());
+      const reportPath = writeLoopReport(iterLog.getLog(), startedAt);
       logger.info(
         `loop stopped: ${reason} (${check.isGuardrail ? 'guardrail' : 'goal'})`,
       );
@@ -98,6 +104,7 @@ export async function runLoop(
         isGuardrail: check.isGuardrail,
         iterationsRun: history.length,
         logPath: iterLog.getPath(),
+        reportPath,
       };
     }
 
@@ -133,4 +140,11 @@ export async function runLoop(
         (record.verify_outcome ? ` / ${record.verify_outcome}` : ''),
     );
   }
+}
+
+function writeLoopReport(log: import('./iteration-logger.js').LoopLog, startedAt: number): string {
+  const dir = ensureReportsDir();
+  const reportPath = path.join(dir, `loop-${isoTimestampForFilename(new Date(startedAt))}.md`);
+  fs.writeFileSync(reportPath, renderLoopReport(log), 'utf8');
+  return reportPath;
 }

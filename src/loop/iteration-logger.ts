@@ -50,6 +50,10 @@ export class IterationLogger {
     return this.log.iterations;
   }
 
+  getLog(): LoopLog {
+    return this.log;
+  }
+
   getPath(): string {
     return this.filePath;
   }
