@@ -33,15 +33,7 @@ npm run build
 ./bin/run.js loop --until p0-gaps==0 --verify
 ```
 
-## What's implemented today
-
-- Manifest schema + cross-reference validation (Zod)
-- Loop safety: stopping conditions, budget tracker, iteration logger (full)
-- CLI skeleton (oclif) for `init`, `scan`, `close`, `loop`
-- Working `child_process.spawn` boilerplate for the agent and Jest verify
-- `tests/schema.test.ts` and `tests/stopping-conditions.test.ts` (Vitest)
-
-## What's stubbed
+## What's deliberately not implemented
 
 - Retry-with-feedback per gap (one-shot today; design doc §11.5)
 - Mutation-testing oracle (catches `expect(true).toBe(true)`; design doc §11.3)
@@ -62,14 +54,28 @@ Two workflows live in `.github/workflows/`:
 ```
 src/
   schema/manifest.ts          Zod schemas + cross-ref validation
-  loop/                        Autonomous controller (stopping logic = real)
-  close/                       Pick → prompt → agent → verify (spawn = real)
-  discover/, score/, report/   Stubs with TODO markers
+  discover/                    Route/test discovery (ts-morph), mock-catalog
+  score/                       Test-file matcher + status rank merge
+  close/                       Pick → prompt → agent → verify
+  loop/                        Autonomous controller with guardrails
+  report/                      Scan report + loop report renderers
+  commands/                    oclif command definitions
 prompts/
   close-gap.md                 Agent prompt template
-  mock-setups.md               Precondition snippets (5 stubs)
+  mock-setups.md               Hand-curated MockClient setup snippets
   behavior-assertions.md       Behavior assertion guidance
 tests/
-  schema.test.ts
-  stopping-conditions.test.ts
+  schema.test.ts               Manifest parse + cross-ref validation
+  stopping-conditions.test.ts  Guardrail evaluation
+  mock-catalog.test.ts         Precondition discovery + auto-synthesis
+  loop-report.test.ts          Loop report rendering
+  … (9 test files total, ~130 tests)
 ```
+
+## Generated artifacts
+
+`coverage.manifest.yaml` is written by `harness scan` and gitignored. Commit
+it only when you want to snapshot a coverage baseline for a specific medplum
+commit — do so explicitly (`git add -f coverage.manifest.yaml`) with a commit
+message that names the medplum SHA. CI runs `harness scan` from scratch each
+time and does not rely on a checked-in manifest.

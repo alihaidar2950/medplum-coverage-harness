@@ -31,9 +31,6 @@ export default class Loop extends Command {
   async run(): Promise<void> {
     const { flags } = await this.parse(Loop);
 
-    // The loop controller is wired up; close()/scan() it depends on are
-    // currently stubbed. The stopping-conditions module IS fully implemented,
-    // so the safety logic is exercisable via tests today.
     try {
       const result = await runLoop({
         iterations: flags.iterations,
