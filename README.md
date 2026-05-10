@@ -43,11 +43,19 @@ npm run build
 
 ## What's stubbed
 
-- ts-morph route/component discovery
-- Test parsing + unit matching + regression detection
-- Prompt building, close orchestration, report rendering
+- Retry-with-feedback per gap (one-shot today; design doc §11.5)
+- Mutation-testing oracle (catches `expect(true).toBe(true)`; design doc §11.3)
+- Playwright matcher under `packages/e2e/` (design doc §11.6)
 
-See `TODO` markers in `src/discover/`, `src/score/`, `src/close/`, `src/report/`.
+## Continuous integration
+
+Two workflows live in `.github/workflows/`:
+
+- **`ci.yml`** — every push and PR. `npm ci` + `npm run build` + `npm test`.
+- **`coverage-scan.yml`** — every PR + daily cron. Clones medplum, runs the
+  full scan against it, surfaces the report in the run summary, uploads it as
+  an artifact, and posts the headline section as a PR comment so coverage
+  deltas show up in code review without anyone running the harness locally.
 
 ## Layout
 

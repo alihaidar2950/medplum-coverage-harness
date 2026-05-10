@@ -1,0 +1,119 @@
+name: Coverage Scan (medplum)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # Daily run keeps the manifest fresh against medplum's evolution.
+  schedule:
+    - cron: '17 6 * * *'
+
+concurrency:
+  group: coverage-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout harness
+        uses: actions/checkout@v4
+        with:
+          path: harness
+
+      - name: Checkout medplum
+        uses: actions/checkout@v4
+        with:
+          repository: medplum/medplum
+          path: medplum
+          ref: main
+          fetch-depth: 1
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: harness/package-lock.json
+
+      - name: Install + build harness
+        working-directory: harness
+        run: |
+          npm ci
+          npm run build
+
+      - name: Init harness against medplum
+        working-directory: harness
+        run: ./bin/run.js init --target ../medplum
+
+      - name: Run scan
+        id: scan
+        working-directory: harness
+        run: |
+          ./bin/run.js scan | tee /tmp/scan-stdout.txt
+          # Extract regression count for the PR comment + step summary.
+          line=$(grep -E "regressions=[0-9]+" /tmp/scan-stdout.txt | tail -1 || true)
+          echo "summary_line=${line}" >> "$GITHUB_OUTPUT"
+
+      - name: Surface scan summary in run UI
+        if: always()
+        working-directory: harness
+        run: |
+          {
+            echo "## Coverage scan vs medplum/main"
+            echo
+            echo "${{ steps.scan.outputs.summary_line }}"
+            echo
+            REPORT=$(ls -t reports/scan-*.md 2>/dev/null | head -1 || true)
+            if [ -n "$REPORT" ]; then
+              echo "<details><summary>Full scan report</summary>"
+              echo
+              cat "$REPORT"
+              echo
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-report-${{ github.run_id }}
+          path: |
+            harness/reports/
+            harness/coverage.manifest.yaml
+
+      - name: Comment scan summary on PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: harness
+        run: |
+          REPORT=$(ls -t reports/scan-*.md 2>/dev/null | head -1 || true)
+          if [ -z "$REPORT" ]; then
+            echo "no scan report found; skipping PR comment"
+            exit 0
+          fi
+          # Compose a compact comment: scan headline section + collapsible full report.
+          {
+            echo "### Coverage scan against medplum/main"
+            echo
+            # Take everything up to (but not including) the "## Status × Priority" section.
+            awk '/^## Status × Priority/{exit} {print}' "$REPORT"
+            echo
+            echo "<details><summary>Full report</summary>"
+            echo
+            echo '```markdown'
+            cat "$REPORT"
+            echo '```'
+            echo
+            echo "</details>"
+          } > /tmp/comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file /tmp/comment.md
