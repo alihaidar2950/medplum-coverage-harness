@@ -79,7 +79,7 @@ Status enum: `COVERED | PARTIAL | GAP | REGRESSION | IGNORED`.
 After any change:
 
 1. `npm run build` is clean.
-2. `npm test` is green (currently 101 tests across 6 files).
+2. `npm test` is green (currently 137 tests across 10 files).
 3. If you touched the manifest catalog (preconditions, behaviors, surfaces),
    `./bin/run.js scan` succeeds against `../medplum`.
 

@@ -1074,5 +1074,5 @@ medplum-coverage-harness/
 
 ---
 
-*This document was written against the codebase at commit `48013e7`.
+*This document was written against the codebase at commit `adfe87a`.
 If something doesn't match, `git log --oneline` and re-read the relevant source file.*

@@ -305,8 +305,11 @@ const PreconditionSchema = z.object({
 
 const BehaviorSchema = z.object({
   id: z.enum([
+    // Generic UI verbs
     'beh.renders', 'beh.list-displayed', 'beh.form-submit-success',
     'beh.form-validation-error', 'beh.navigates', 'beh.empty-state', 'beh.error-state',
+    // Healthcare-specific verbs — part of core vocabulary, not an extension axis
+    'beh.phi-masked', 'beh.audit-event-emitted', 'beh.consent-honored',
   ]),
   description: z.string(),
   assertion_ref: z.string(),
@@ -466,7 +469,7 @@ harness loop \
 
 ### 11.1 Preconditions and behaviors are not from real requirements
 
-In a production engagement, these would come from acceptance criteria, FHIR profiles, and risk-tier docs co-owned with clinicians and compliance. Behaviors would include healthcare-specific verbs like `phi-masked`, `audit-event-emitted`, `consent-honored`, `clinically-valid`.
+In a production engagement, these would come from acceptance criteria, FHIR profiles, and risk-tier docs co-owned with clinicians and compliance. The behavior enum already includes the three load-bearing healthcare verbs — `phi-masked`, `audit-event-emitted`, `consent-honored` — but a real catalog would also have `clinically-valid` and finer-grained variants per FHIR profile.
 
 For this take-home, the catalog is bootstrapped from (a) hand-curated seeds and (b) extraction of existing MockClient patterns. The shape doesn't change — still `(Surface, Precondition, Behavior)` — but the third axis would be co-owned, not invented by SDET. This shows I understand coverage-as-risk-model, not just coverage-as-completeness-metric.
 
@@ -478,9 +481,9 @@ Static analysis can miss tests using unusual rendering wrappers or assertion sty
 
 The agent could write `expect(true).toBe(true)` and the matcher would credit it. **Mitigation today:** human-in-the-loop review before merge; `--verify` catches non-compiling tests. **Mitigation longer-term:** mutation testing — run the test against a deliberately broken implementation; if it still passes, the assertion is fake.
 
-### 11.4 The behavior enum is generic, not healthcare-specific
+### 11.4 Healthcare behaviors are present but lightly exercised
 
-Already covered in 11.1. The `phi-masked`, `audit-event-emitted` behaviors are where real clinical risk lives.
+The enum includes `phi-masked`, `audit-event-emitted`, `consent-honored`, and `tests/healthcare-loop.test.ts` proves the close→re-scan cycle moves an `audit-event-emitted` unit GAP→COVERED end-to-end with a stubbed agent. What's missing is depth: each of these behaviors really wants its own assertion library (PHI redaction matchers, AuditEvent shape validators, Consent rule engine) so that generated tests can't be Goodhart'd by trivially matching the keyword without exercising the underlying compliance invariant.
 
 ### 11.5 Single-shot agent invocation, no retry-with-feedback
 
@@ -496,7 +499,7 @@ Conditions like `coverage >= 50%` are vulnerable to gaming by adding low-quality
 
 ### 11.8 Manifest could explode at scale
 
-25 surfaces × 10 preconditions × 7 behaviors = 1,750 possible combinations. Filtered by priority. As the app grows, this filter would need automation or co-curation with developers as part of feature work.
+Today on `medplum/main`: 69 surfaces × 6 preconditions × 10 behaviors = 4,140 theoretical combinations. The category-driven behavior whitelist plus auth-aware precondition filtering trim that to **556 units** in practice. As the app grows, the whitelist itself would need automation or co-curation with developers as part of feature work — otherwise every new surface category requires a code change in `categorizeRoute`.
 
 ---
 
@@ -527,12 +530,16 @@ The slide that wins this interview is slide 9. Most candidates won't volunteer t
 medplum-coverage-harness/
 ├── README.md                  # Quickstart, runs the loop in 5 commands
 ├── docs/
-│   ├── design.md              # This document
-│   └── walkthrough.md         # Speaker notes from §12
+│   ├── design.md              # This document — source of truth
+│   ├── HOW_IT_WORKS.md        # Plain-English walkthrough of the codebase
+│   ├── INPUTS_AND_OUTPUTS.md  # Hardcoded vs auto-discovered vs generated
+│   ├── INTERVIEW_QA.md        # Likely head-of-engineering questions
+│   ├── slides.md              # Marp deck for the walkthrough
+│   └── demo-script.md         # Live demo timing + commands
 ├── package.json
 ├── tsconfig.json
 ├── harness.config.json        # Points at sibling medplum checkout
-├── coverage.manifest.yaml     # Generated; checked in for demo
+├── coverage.manifest.yaml     # Gitignored; regenerated each scan
 ├── coverage.manifest.previous.yaml
 ├── reports/                   # Gitignored; populated by runs
 │   └── iteration-log.json     # Audit trail for autonomous runs
@@ -540,6 +547,10 @@ medplum-coverage-harness/
 │   ├── close-gap.md
 │   ├── mock-setups.md
 │   └── behavior-assertions.md
+├── agent-context/.claude/     # Constrained overlay for `claude --print`
+│   ├── settings.json          # Write-only allowlist
+│   ├── hooks/pre-write-fence.sh
+│   └── skills/medplum-test-writing/
 └── src/
     ├── cli.ts
     ├── commands/
@@ -548,5 +559,6 @@ medplum-coverage-harness/
     ├── score/
     ├── close/
     ├── loop/                  # autonomous controller
+    ├── report/
     └── util/
 ```
