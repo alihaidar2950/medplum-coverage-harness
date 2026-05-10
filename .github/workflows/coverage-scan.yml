@@ -55,6 +55,7 @@ jobs:
         id: scan
         working-directory: harness
         run: |
+          set -o pipefail
           ./bin/run.js scan | tee /tmp/scan-stdout.txt
           # Extract regression count for the PR comment + step summary.
           line=$(grep -E "regressions=[0-9]+" /tmp/scan-stdout.txt | tail -1 || true)
@@ -114,6 +115,10 @@ jobs:
             echo
             echo "</details>"
           } > /tmp/comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file /tmp/comment.md \
+            --edit-last 2>/dev/null || \
           gh pr comment "${{ github.event.pull_request.number }}" \
             --repo "${{ github.repository }}" \
             --body-file /tmp/comment.md
