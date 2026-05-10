@@ -87,15 +87,19 @@ when (a) a test file's basename matches the surface component, and (b) the
 test's MockClient setup classifies confidently into a known precondition. The
 matcher does *not* check whether the test actually asserts the behavior.
 
-Three mitigations:
+Four mitigations:
 
-1. **`--verify` runs Jest** on each generated test. A test that doesn't even
+1. **`gapClosed` (added during self-review).** The `close` CLI exits 2 if
+   the agent wrote a file but the targeted unit isn't COVERED in the
+   post-rescan. So "agent succeeded" and "gap closed" are now distinct
+   signals. See §7.2 below for the full bug-and-fix record.
+2. **`--verify` runs Jest** on each generated test. A test that doesn't even
    compile cannot have written a real assertion. This catches the worst
    class of fake.
-2. **The headline metric is delta**, not absolute %. Systematic matcher
+3. **The headline metric is delta**, not absolute %. Systematic matcher
    errors cancel out across before/after, so even if our scorer is too
    generous, "+5 COVERED after this loop run" is still a meaningful number.
-3. **PARTIAL exists.** When the matcher can't classify the precondition
+4. **PARTIAL exists.** When the matcher can't classify the precondition
    confidently, the unit goes to PARTIAL, not COVERED. I deliberately
    resisted promoting PARTIAL→COVERED to make headline numbers look better.
 
@@ -393,35 +397,108 @@ changed."
 
 ---
 
-## 7. What I'd Change If Starting Over
+## 7. Control-Path Bugs Found in Self-Review (and Fixed)
 
-Honest list, no flattery:
+A stricter pass through the source after the rest of this doc was written
+turned up three control-path issues where the implementation didn't match
+the documented semantics. I fixed them in [src/score/index.ts](../src/score/index.ts),
+[src/commands/close.ts](../src/commands/close.ts),
+[src/commands/loop.ts](../src/commands/loop.ts),
+[src/loop/index.ts](../src/loop/index.ts), and
+[src/close/index.ts](../src/close/index.ts). The full record:
 
-1. **Add the mutation oracle from day one.** It's the gap I keep flagging.
-   Without it, COVERED is "matcher saw a test" not "test catches bugs."
+### 7.1 Regression detection wasn't wired into close/loop
+
+**Symptom:** `score/index.ts` `scan()` returned the bare `discover + scoreUnits`
+result. Only `commands/scan.ts` wrapped it with `detectRegressions`. The
+`close` and `loop` paths used the bare function — so the units they iterated
+on never had `status === 'REGRESSION'`. That made:
+
+- `--strategy regression-first` fall back to highest-priority silently (no
+  REGRESSION units to pick).
+- `--until regressions==0` trivially true on every loop run.
+
+**Fix:** Added `scanWithRegressions()` in `src/score/index.ts`. It reads the
+on-disk manifest (or accepts an injected `previous`), runs the bare scan,
+and tags REGRESSION before returning. Wired it into `commands/scan.ts`,
+`commands/close.ts`, and the loop's defaultDeps. Test:
+[tests/score.test.ts](../tests/score.test.ts) — the new
+"scanWithRegressions" describe block builds a temp target with no test file,
+provides a `previous` where the unit was COVERED, and asserts the unit comes
+back as REGRESSION.
+
+### 7.2 `close` reported success even when the gap wasn't closed
+
+**Symptom:** `closeOne` set `agentOutcome='success'` whenever the agent
+landed a file at the expected path. The CLI exit code keyed off
+`agentOutcome` only, so a syntactically valid test the matcher couldn't
+classify confidently (e.g. bare `new MockClient()` → PARTIAL) still produced
+exit 0. The brief is about closing gaps, not producing files; this was a
+real correctness gap.
+
+**Fix:** Added a `gapClosed: boolean` field to `CloseOutcome`. It's set to
+`(after.units.find(u => u.id === unit.id)?.status === 'COVERED')`. The CLI
+now exits 2 (the documented-but-unimplemented "produced test did not match
+the gap" code) when `agentOutcome === 'success'` but `gapClosed === false`.
+Test:
+[tests/healthcare-loop.test.ts](../tests/healthcare-loop.test.ts) — the new
+counter-test stubs the agent to write a bare-`MockClient` test, asserts
+`agentOutcome === 'success'`, `afterUnit.status === 'PARTIAL'`, and
+`gapClosed === false`.
+
+### 7.3 The loop bypassed `validatePromptReferences`
+
+**Symptom:** Both `commands/scan.ts` and `commands/close.ts` called
+`validatePromptReferences` to fail fast on dangling prompt anchors, but
+`commands/loop.ts` went straight to `runLoop` without it. If anchors had
+drifted, every loop iteration would silently splice the
+`// TODO: snippet missing` placeholder into the agent's prompt — the loop
+wouldn't error, it would just churn out useless tests until a guardrail
+fired. CLAUDE.md lists ref validation as a load-bearing invariant; the loop
+violated it.
+
+**Fix:** `commands/loop.ts` now runs `scanWithRegressions` + `validatePromptReferences`
+up-front and throws before calling `runLoop` if any ref is bad.
+[tests/refs.test.ts](../tests/refs.test.ts) already covers the validator
+itself; the wiring change is straightforward enough that the surrounding
+code review carries it.
+
+---
+
+## 8. What I'd Still Change If Starting Over
+
+Items below survived the control-path fix pass — they're real model-quality
+concerns, not bugs:
+
+1. **Add the mutation oracle from day one.** Even with `gapClosed`, COVERED
+   means "matcher saw a structurally-plausible test", not "test catches
+   bugs." Mutation testing (§11.3 of design.md) would close that gap.
 2. **Per-behavior assertion helpers.** `expect.toHaveAuditEvent(spy, …)`
    would let `beh.audit-event-emitted` mean something stronger than "the
    word AuditEvent appears."
 3. **Drop the keyword classifier**, replace with a file-naming convention
    enforced by ESLint (`SignInPage.beh.form-validation-error.test.tsx`).
    Cleaner, deterministic, and self-documenting.
-4. **Retry-with-feedback** in the agent invoker. Today, one bad attempt
-   kills the iteration. A real version would feed the Jest stderr back into
-   the next prompt and give the agent up to 3 tries per gap before bailing.
-5. **Lead the report with P0**, not totals. The P2 number is too inflated to
-   be a useful KPI.
-6. **Include a Playwright matcher.** The vocabulary is runner-agnostic but
-   the matcher only walks Jest tests today. A second matcher for
-   `packages/e2e/` would extend coverage to integration scenarios without
-   any vocabulary change.
-
-None of these are blockers for the take-home; they're the next 1-2 weeks of
-work in a real deployment.
+4. **Surface match should fall back to `importedComponents`.** Today
+   [src/score/unit-matcher.ts](../src/score/unit-matcher.ts) only matches by
+   filename basename. The parser already extracts named imports — using
+   them as a secondary signal would catch tests that wrap rendering in
+   helpers.
+5. **Auto-precondition fan-out is too loose.** A new observed practitioner
+   signature gets paired with every practitioner-auth surface in
+   [src/discover/index.ts](../src/discover/index.ts). A real fix would
+   gate fan-out on which surfaces actually use the seeded resources.
+6. **Retry-with-feedback** in the agent invoker. One bad attempt kills the
+   iteration today. Real version: feed the Jest stderr back into the next
+   prompt, up to N attempts per gap.
+7. **Lead the report with P0**, not totals. P2 inflation makes top-line
+   numbers hard to read.
+8. **Playwright matcher** for runner-agnostic coverage of integration
+   scenarios.
 
 ---
 
-*Last updated for commit `adfe87a`. If a question turns out to require a code
-walkthrough I didn't anticipate, the source files are organized so a senior
-reader can find the answer in under five minutes — the file-and-folder map
-in [HOW_IT_WORKS.md §12](./HOW_IT_WORKS.md#12-file-and-folder-map) is the
-map.*
+*Last updated for the fix-the-three-control-path-bugs revision (139/139
+tests). If a question turns out to require a code walkthrough I didn't
+anticipate, the file-and-folder map in
+[HOW_IT_WORKS.md §12](./HOW_IT_WORKS.md#12-file-and-folder-map) is the map.*

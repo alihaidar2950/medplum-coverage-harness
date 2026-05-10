@@ -1,6 +1,8 @@
 import { Command, Flags } from '@oclif/core';
 import { logger } from '../util/logger.js';
 import { runLoop } from '../loop/index.js';
+import { scanWithRegressions } from '../score/index.js';
+import { validatePromptReferences } from '../schema/refs.js';
 
 export default class Loop extends Command {
   static override description =
@@ -32,6 +34,17 @@ export default class Loop extends Command {
     const { flags } = await this.parse(Loop);
 
     try {
+      // Pre-flight: validate prompt references once, up front. Without this,
+      // every iteration would silently splice "// TODO: snippet missing"
+      // into the agent's prompt — the loop wouldn't fail loudly, it would
+      // just produce useless tests until a guardrail fired.
+      const { manifest } = await scanWithRegressions();
+      const refs = validatePromptReferences(manifest);
+      if (!refs.ok) {
+        for (const e of refs.errors) logger.error(e);
+        throw new Error(`prompt reference validation failed (${refs.errors.length} error(s))`);
+      }
+
       const result = await runLoop({
         iterations: flags.iterations,
         until: flags.until,

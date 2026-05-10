@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { discoverTestFiles, parseTestFile } from '../src/score/test-parser.js';
 import { classifyMockSetup } from '../src/score/mock-call-extractor.js';
 import { classifyBehavior, matchTestToUnits } from '../src/score/unit-matcher.js';
-import { scoreUnits } from '../src/score/index.js';
+import { scoreUnits, scanWithRegressions } from '../src/score/index.js';
 import type { Manifest } from '../src/schema/manifest.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -214,6 +214,79 @@ describe('matchTestToUnits', () => {
     };
     const parsed = parseTestFile(path.join(FIXTURE_SRC, 'AmbiguousPage.test.tsx'));
     expect(matchTestToUnits(parsed, m)).toEqual([]);
+  });
+});
+
+describe('scanWithRegressions — fix for close/loop control paths', () => {
+  // The bug being fixed: bare scan() returns COVERED/PARTIAL/GAP only.
+  // Without scanWithRegressions in the close/loop paths, units that flipped
+  // COVERED→GAP would never be tagged REGRESSION, which silently broke
+  // `--strategy regression-first` (had nothing to pick) and `--until
+  // regressions==0` (trivially true). This test builds a self-contained
+  // target repo so we can control whether "previous COVERED" should now
+  // appear as GAP and confirm REGRESSION tagging happens end-to-end.
+
+  it('tags COVERED→GAP transitions as REGRESSION when previous is provided', async () => {
+    const tmp = fs.mkdtempSync(path.join(__dirname, 'fixtures/scan-regr-'));
+    try {
+      const appSrc = path.join(tmp, 'packages/app/src');
+      fs.mkdirSync(appSrc, { recursive: true });
+      fs.writeFileSync(
+        path.join(appSrc, 'SignInPage.tsx'),
+        'export function SignInPage() { return null; }\n',
+        'utf8',
+      );
+      fs.writeFileSync(
+        path.join(appSrc, 'AppRoutes.tsx'),
+        [
+          "import { Route, Routes } from 'react-router';",
+          "import { SignInPage } from './SignInPage';",
+          'export function AppRoutes() {',
+          '  return (',
+          '    <Routes>',
+          '      <Route path="/signin" element={<SignInPage />} />',
+          '    </Routes>',
+          '  );',
+          '}',
+          '',
+        ].join('\n'),
+        'utf8',
+      );
+      // No SignInPage.test.tsx → fresh scan will mark every signin unit GAP.
+
+      const previous: Manifest = {
+        version: 1,
+        generated_at: '2026-05-09T13:00:00.000Z',
+        target: { repo: tmp, scope: ['packages/app/src'] },
+        surfaces: [],
+        preconditions: [],
+        behaviors: [],
+        units: [
+          {
+            id: 'unit.signin.unauthed.renders',
+            surface: 'surface.signin',
+            precondition: 'pre.unauthed',
+            behavior: 'beh.renders',
+            priority: 'P0',
+            // Pretend a test once covered this unit. The fresh scan won't
+            // find one — this transition is exactly what REGRESSION means.
+            status: 'COVERED',
+            covered_by: ['packages/app/src/SignInPage.test.tsx'],
+          },
+        ],
+      };
+
+      const { manifest, diff } = await scanWithRegressions({
+        targetRepo: tmp,
+        previous,
+      });
+
+      const unit = manifest.units.find((u) => u.id === 'unit.signin.unauthed.renders');
+      expect(unit?.status).toBe('REGRESSION');
+      expect(diff.regressionIds).toContain('unit.signin.unauthed.renders');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { logger } from '../util/logger.js';
 import { closeForLoop, type CloseOutcome } from '../close/index.js';
-import { scan } from '../score/index.js';
+import { scanWithRegressions } from '../score/index.js';
 import { ensureReportsDir, isoTimestampForFilename } from '../util/paths.js';
 import { renderLoopReport } from '../report/loop-report.js';
 import { BudgetTracker } from './budget-tracker.js';
@@ -44,8 +44,11 @@ export interface LoopDeps {
   now?: () => number;
 }
 
+// The loop's `manifest` per iteration MUST be regression-tagged — otherwise
+// `--strategy regression-first` has nothing to pick and `--until regressions==0`
+// is trivially true. Use `scanWithRegressions` rather than the bare scan.
 const defaultDeps: LoopDeps = {
-  scan,
+  scan: async () => (await scanWithRegressions()).manifest,
   close: closeForLoop,
 };
 

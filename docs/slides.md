@@ -108,7 +108,7 @@ harness loop   →   scan → stop? → close → log  ×N  →  loop report
 ```
 
 Four separable modules. Each is independently testable.
-**137 Vitest tests** across 10 files — every module is covered, including an end-to-end loop test that drives a healthcare-behavior gap GAP→COVERED with a stubbed agent.
+**139 Vitest tests** across 10 files — every module is covered, including an end-to-end loop test that drives a healthcare-behavior gap GAP→COVERED with a stubbed agent.
 
 ---
 
@@ -251,6 +251,6 @@ cd medplum-coverage-harness && npm ci && npm run build
 ./bin/run.js loop --until delta-stalled --verify
 ```
 
-**137 tests, 10 files, zero mocked databases.**
+**139 tests, 10 files, zero mocked databases.**
 
 *Questions?*

@@ -193,8 +193,143 @@ describe('end-to-end: closing a healthcare-behavior gap', () => {
     expect(afterUnit?.covered_by).toContain(
       'packages/app/src/admin/NewUserPage.beh.audit-event-emitted.test.tsx',
     );
+    // gapClosed must agree with the rescan — this is the load-bearing
+    // signal for the CLI's exit code 0 (vs exit 2 for "wrote a file but
+    // didn't actually close anything").
+    expect(result.outcome.gapClosed).toBe(true);
 
     // Delta should reflect at least one new COVERED unit.
     expect(result.outcome.delta.covered).toBeGreaterThanOrEqual(1);
+  }, 30_000);
+
+  it('gapClosed=false when the agent writes a file the matcher cannot classify', async () => {
+    // Counter-test for the gapClosed semantics: if the stubbed agent writes
+    // a file at the expected path but with a MockClient setup the extractor
+    // can't classify confidently (bare `new MockClient()`), the matcher
+    // produces PARTIAL rather than COVERED — so gapClosed must report
+    // false even though agentOutcome === 'success'. This is the exact case
+    // the close CLI's exit-2 path is meant to flag.
+    tmpTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-e2e-target-'));
+    const appSrc = path.join(tmpTarget, 'packages/app/src');
+    fs.mkdirSync(appSrc, { recursive: true });
+    fs.writeFileSync(
+      path.join(appSrc, 'HomePage.tsx'),
+      'export function HomePage() { return null; }\n',
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(appSrc, 'AppRoutes.tsx'),
+      [
+        "import { Route, Routes } from 'react-router';",
+        "import { HomePage } from './HomePage';",
+        'export function AppRoutes() {',
+        '  return (',
+        '    <Routes>',
+        '      <Route path="/home" element={<HomePage />} />',
+        '    </Routes>',
+        '  );',
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    tmpBin = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-e2e-bin-'));
+    const fakeClaude = path.join(tmpBin, 'claude');
+    // The generated test uses bare `new MockClient()` — no profile arg.
+    // mock-call-extractor classifies this as pre.practitioner.empty with
+    // confident=false, so unit-matcher returns PARTIAL, not COVERED.
+    const ambiguousTest = [
+      "import { MockClient } from '@medplum/mock';",
+      "import { HomePage } from './HomePage';",
+      '',
+      "describe('HomePage', () => {",
+      "  test('renders something', () => {",
+      '    const medplum = new MockClient();',
+      '    expect(medplum).toBeDefined();',
+      '    expect(HomePage).toBeDefined();',
+      '  });',
+      '});',
+      '',
+    ].join('\n');
+    fs.writeFileSync(
+      fakeClaude,
+      [
+        '#!/usr/bin/env bash',
+        'cat > /dev/null',
+        'mkdir -p "$(dirname "$EXPECTED_TEST_FILE")"',
+        "cat > \"$EXPECTED_TEST_FILE\" <<'__HARNESS_EOF__'",
+        ambiguousTest,
+        '__HARNESS_EOF__',
+        'exit 0',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    fs.chmodSync(fakeClaude, 0o755);
+
+    originalPath = process.env.PATH;
+    process.env.PATH = `${tmpBin}:${originalPath ?? ''}`;
+
+    const before: Manifest = {
+      version: 1,
+      generated_at: '2026-05-09T14:00:00.000Z',
+      target: { repo: tmpTarget, scope: ['packages/app/src'] },
+      surfaces: [
+        {
+          id: 'surface.home',
+          route: '/home',
+          component: 'HomePage',
+          discovered_via: 'packages/app/src/HomePage.tsx:1',
+        },
+      ],
+      preconditions: [
+        {
+          id: 'pre.practitioner.empty',
+          description: 'practitioner signed in, no project resources',
+          auth: 'practitioner',
+          resources: [],
+          mock_setup_ref: 'prompts/mock-setups.md#pre.practitioner.empty',
+        },
+      ],
+      behaviors: [
+        {
+          id: 'beh.renders',
+          description: 'page mounts',
+          assertion_ref: 'prompts/behavior-assertions.md#beh.renders',
+        },
+      ],
+      units: [
+        {
+          id: 'unit.home.practitioner.empty.renders',
+          surface: 'surface.home',
+          precondition: 'pre.practitioner.empty',
+          behavior: 'beh.renders',
+          priority: 'P0',
+          status: 'GAP',
+          covered_by: [],
+        },
+      ],
+    };
+
+    const result = await closeOne(before, {
+      strategy: 'highest-priority',
+      verify: false,
+      targetRepo: tmpTarget,
+      agentTimeoutMs: 10_000,
+    });
+
+    expect(result.outcome.agentOutcome).toBe('success');
+    expect(result.generatedTestPath).toBeDefined();
+    // The file landed, but the matcher saw a low-confidence MockClient
+    // setup and returned PARTIAL. The targeted unit's status is therefore
+    // PARTIAL (an upgrade from GAP, but not COVERED) — and gapClosed must
+    // be false. Without this distinction, the CLI would exit 0 on a file
+    // that didn't actually close the gap.
+    const afterUnit = result.after.units.find(
+      (u) => u.id === 'unit.home.practitioner.empty.renders',
+    );
+    expect(afterUnit?.status).toBe('PARTIAL');
+    expect(result.outcome.gapClosed).toBe(false);
   }, 30_000);
 });

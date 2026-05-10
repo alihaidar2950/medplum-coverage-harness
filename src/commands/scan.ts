@@ -8,12 +8,10 @@ import {
   manifestPath,
   previousManifestPath,
 } from '../util/paths.js';
-import { readManifest, writeManifest } from '../util/yaml.js';
-import { scan as runScan } from '../score/index.js';
-import { detectRegressions } from '../score/regression-detector.js';
+import { writeManifest } from '../util/yaml.js';
+import { scanWithRegressions } from '../score/index.js';
 import { renderScanReport } from '../report/scan-report.js';
 import { validatePromptReferences } from '../schema/refs.js';
-import type { Manifest } from '../schema/manifest.js';
 
 export default class Scan extends Command {
   static override description =
@@ -25,29 +23,20 @@ export default class Scan extends Command {
     try {
       const generatedAt = new Date().toISOString();
 
-      let previous: Manifest | undefined;
+      // Preserve the existing manifest before any new write, so callers can
+      // diff. `scanWithRegressions` reads the same file as `previous`, but
+      // the copy here is what feeds the next scan's previousManifestPath.
       if (fs.existsSync(manifestPath())) {
-        try {
-          previous = readManifest(manifestPath());
-        } catch (err) {
-          logger.warn(
-            'existing coverage.manifest.yaml failed validation; ignoring it for diff:',
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-        // Preserve the file regardless of validation success.
         fs.copyFileSync(manifestPath(), previousManifestPath());
       }
 
-      const fresh = await runScan({ generatedAt });
+      const { manifest, diff, previous } = await scanWithRegressions({ generatedAt });
 
-      const refs = validatePromptReferences(fresh);
+      const refs = validatePromptReferences(manifest);
       if (!refs.ok) {
         for (const e of refs.errors) logger.error(e);
         throw new Error(`prompt reference validation failed (${refs.errors.length} error(s))`);
       }
-
-      const { manifest, diff } = detectRegressions(previous, fresh);
 
       writeManifest(manifestPath(), manifest);
 

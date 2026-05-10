@@ -165,6 +165,7 @@ describe('runLoop writes a markdown report', () => {
           gapPicked: 'unit.x',
           gapPriority: 'P0',
           agentOutcome: 'success',
+          gapClosed: true,
           delta: { covered: 1, partial: 0 },
         }),
       },

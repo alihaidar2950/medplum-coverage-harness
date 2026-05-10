@@ -6,7 +6,7 @@
 Pre-flight checklist (do this the night before):
   [ ] medplum repo cloned at ../medplum
   [ ] npm ci && npm run build done in this repo
-  [ ] npm test passes (137 tests across 10 files)
+  [ ] npm test passes (139 tests across 10 files)
   [ ] Terminal font size bumped to 18+
   [ ] Split terminal: left = commands, right = file tree (or VS Code)
   [ ] Close Slack, notifications

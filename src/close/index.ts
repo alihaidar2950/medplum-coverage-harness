@@ -14,7 +14,19 @@ import { computeDelta } from './delta-reporter.js';
 export interface CloseOutcome {
   gapPicked: string;
   gapPriority: string;
+  /**
+   * Did the agent produce the expected file? `success` does NOT imply the
+   * gap was actually closed — a syntactically valid test that the matcher
+   * doesn't recognize will still set this to `success`. Use `gapClosed`
+   * for the gap-actually-closed semantics.
+   */
   agentOutcome: 'success' | 'failure';
+  /**
+   * True iff the targeted unit's status is COVERED in the post-close
+   * re-scan. This is the load-bearing signal for "we actually closed the
+   * gap" — agentOutcome only tells you the file was written.
+   */
+  gapClosed: boolean;
   verifyOutcome?: VerifyOutcome;
   delta: { covered: number; partial: number };
 }
@@ -71,6 +83,7 @@ export async function closeOne(
         gapPicked: options.gapId ?? '<none>',
         gapPriority: 'P?',
         agentOutcome: 'failure',
+        gapClosed: false,
         delta: { covered: 0, partial: 0 },
       },
       before,
@@ -87,6 +100,7 @@ export async function closeOne(
         gapPicked: unit.id,
         gapPriority: unit.priority,
         agentOutcome: 'failure',
+        gapClosed: unit.status === 'COVERED',
         delta: { covered: 0, partial: 0 },
       },
       unit,
@@ -105,6 +119,7 @@ export async function closeOne(
         gapPicked: unit.id,
         gapPriority: unit.priority,
         agentOutcome: 'failure',
+        gapClosed: false,
         delta: { covered: 0, partial: 0 },
       },
       unit,
@@ -170,11 +185,18 @@ export async function closeOne(
 
   const delta = computeDelta(before, after);
 
+  // The targeted unit's post-rescan status is the only honest answer to
+  // "did we actually close the gap?" — agentOutcome only tracks file
+  // production, which is necessary but not sufficient.
+  const targetedAfter = after.units.find((u) => u.id === unit.id);
+  const gapClosed = targetedAfter?.status === 'COVERED';
+
   return {
     outcome: {
       gapPicked: unit.id,
       gapPriority: unit.priority,
       agentOutcome,
+      gapClosed,
       verifyOutcome,
       delta,
     },
