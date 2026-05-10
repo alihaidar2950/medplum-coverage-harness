@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { discoverTestFiles, parseTestFile } from '../src/score/test-parser.js';
@@ -117,6 +118,62 @@ describe('classifyBehavior', () => {
   });
   it('"Empty state shown when no patients" → empty-state', () => {
     expect(classifyBehavior({ name: 'Empty state shown when no patients', bodyText: '' })).toBe('beh.empty-state');
+  });
+
+  // Healthcare-specific patterns must beat the generic UI verbs they
+  // co-occur with (a real audit-event test usually mentions "submit" or
+  // "create"). These tests pin that ordering.
+  it('AuditEvent in body → audit-event-emitted (beats the "submit" keyword)', () => {
+    expect(
+      classifyBehavior({
+        name: 'creates user and submits the form',
+        bodyText: "expect(spy).toHaveBeenCalledWith({ resourceType: 'AuditEvent' })",
+      }),
+    ).toBe('beh.audit-event-emitted');
+  });
+  it('"audit event" in name → audit-event-emitted', () => {
+    expect(classifyBehavior({ name: 'emits an audit event', bodyText: '' })).toBe(
+      'beh.audit-event-emitted',
+    );
+  });
+  it('Consent literal in body → consent-honored', () => {
+    expect(
+      classifyBehavior({
+        name: 'restricts access',
+        bodyText: "createResource({ resourceType: 'Consent', ... })",
+      }),
+    ).toBe('beh.consent-honored');
+  });
+  it('"redacted" / "masked" in name → phi-masked', () => {
+    expect(classifyBehavior({ name: 'PHI fields are masked for unauthorized', bodyText: '' })).toBe(
+      'beh.phi-masked',
+    );
+    expect(classifyBehavior({ name: 'birthDate is redacted', bodyText: '' })).toBe(
+      'beh.phi-masked',
+    );
+  });
+});
+
+describe('parseTestFile baseName for harness-generated tests', () => {
+  // The harness writes tests as `<Component>.beh.<id>.test.tsx`. Without
+  // stripping the `.beh.<id>` infix in baseName extraction, the matcher
+  // would never find the surface, and the close→re-scan loop would never
+  // see a freshly written test as COVERED.
+  it('strips the .beh.<id> infix from generated test filenames', () => {
+    const tmp = path.join(__dirname, 'fixtures/test-target/packages/app/src');
+    const generated = path.join(tmp, 'SignInPage.beh.form-submit-success.test.tsx');
+    fs.writeFileSync(generated, "test('x', () => {});\n", 'utf8');
+    try {
+      const parsed = parseTestFile(generated);
+      expect(parsed.baseName).toBe('SignInPage');
+    } finally {
+      fs.rmSync(generated, { force: true });
+    }
+  });
+
+  it('leaves non-harness names alone (no .beh. infix)', () => {
+    const parsed = parseTestFile(path.join(FIXTURE_SRC, 'HomePage.test.tsx'));
+    expect(parsed.baseName).toBe('HomePage');
   });
 });
 
