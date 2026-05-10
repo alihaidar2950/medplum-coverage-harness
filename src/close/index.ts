@@ -132,6 +132,8 @@ export async function closeOne(
     cwd: targetRepo,
     timeoutMs: options.agentTimeoutMs,
     allowedTools: ['Write'],
+    // Hook in agent-context/.claude/hooks/pre-write-fence.sh enforces this.
+    expectedTestFile: prompt.expectedTestFile,
   });
 
   let agentOutcome: 'success' | 'failure' = 'failure';
