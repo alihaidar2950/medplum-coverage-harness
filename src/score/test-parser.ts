@@ -132,7 +132,14 @@ export function parseTestFile(filePath: string): ParsedTest {
 
   return {
     filePath,
-    baseName: path.basename(filePath).replace(/\.test\.(tsx|ts)$/, ''),
+    // Strip an optional `.beh.<id>` infix before `.test.tsx` so the harness's
+    // own generated tests (e.g. `SignInPage.beh.renders.test.tsx`) match the
+    // surface whose component is just `SignInPage`. Without this, the
+    // close→re-scan cycle would never see freshly written tests as covering
+    // their unit, because basename would be "SignInPage.beh.renders".
+    baseName: path
+      .basename(filePath)
+      .replace(/(\.beh\.[a-z][a-z0-9-]*)?\.test\.(tsx|ts)$/, ''),
     importedComponents,
     mockClientProfiles,
     hasSetActiveLoginOverride,

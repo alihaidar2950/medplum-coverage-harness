@@ -60,11 +60,30 @@ export function matchTestToUnits(parsed: ParsedTest, manifest: Manifest): UnitMa
 
 /**
  * Map a single test() block to a behavior. Order matters: the first rule
- * that matches wins, so more-specific signals (validation, navigation) come
- * before broader ones (error, renders).
+ * that matches wins, so more-specific signals (healthcare verbs, validation,
+ * navigation) come before broader ones (error, renders).
+ *
+ * Healthcare patterns are checked first because they're load-bearing for
+ * compliance signal AND they tend to co-occur with broader keywords (an
+ * audit-event test usually involves a "submit" or "create"). Without this
+ * ordering, healthcare behaviors would be silently shadowed by form-success.
  */
 export function classifyBehavior(tc: TestCase): BehaviorId | undefined {
   const haystack = `${tc.name}\n${tc.bodyText}`.toLowerCase();
+
+  // Match `AuditEvent` case-sensitively against the body — the FHIR
+  // resourceType literal is the strongest signal that this test covers
+  // beh.audit-event-emitted, and it's unique enough that name-collisions
+  // aren't a concern.
+  if (/\bAuditEvent\b/.test(tc.bodyText) || /\baudit[\s-]?event\b/.test(haystack)) {
+    return 'beh.audit-event-emitted';
+  }
+  if (/\bConsent\b/.test(tc.bodyText) || /\bconsent\s+(restrict|honor|grant|deny)/.test(haystack)) {
+    return 'beh.consent-honored';
+  }
+  if (/\b(phi|redact[a-z]*|mask(ed|ing|s)?|withheld|protected\s+health)\b/.test(haystack)) {
+    return 'beh.phi-masked';
+  }
 
   if (/\b(validation|invalid|required|missing)\b/.test(haystack)) {
     return 'beh.form-validation-error';
