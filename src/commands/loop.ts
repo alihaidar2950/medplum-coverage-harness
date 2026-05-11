@@ -1,4 +1,4 @@
-import { Command, Flags } from '@oclif/core';
+import { Command, Errors, Flags } from '@oclif/core';
 import { logger } from '../util/logger.js';
 import { runLoop } from '../loop/index.js';
 import { scanWithRegressions } from '../score/index.js';
@@ -60,6 +60,7 @@ export default class Loop extends Command {
       logger.info(`log:    ${result.logPath}`);
       this.exit(result.isGuardrail ? 4 : 0);
     } catch (err) {
+      if (err instanceof Errors.ExitError) throw err;
       logger.error('loop failed:', err instanceof Error ? err.message : String(err));
       this.exit(3);
     }

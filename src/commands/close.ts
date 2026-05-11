@@ -1,4 +1,4 @@
-import { Command, Flags } from '@oclif/core';
+import { Command, Errors, Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { logger } from '../util/logger.js';
@@ -106,6 +106,10 @@ export default class Close extends Command {
       }
       this.exit(0);
     } catch (err) {
+      // oclif implements this.exit() by throwing an EEXIT error — re-throw so
+      // the intended exit code reaches the process rather than being swallowed
+      // here and replaced with exit 3.
+      if (err instanceof Errors.ExitError) throw err;
       logger.error('close failed:', err instanceof Error ? err.message : String(err));
       this.exit(3);
     }

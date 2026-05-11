@@ -1,4 +1,4 @@
-import { Command } from '@oclif/core';
+import { Command, Errors } from '@oclif/core';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { logger } from '../util/logger.js';
@@ -55,6 +55,7 @@ export default class Scan extends Command {
       logger.info(`manifest: ${manifestPath()}`);
       logger.info(`report:   ${reportPath}`);
     } catch (err) {
+      if (err instanceof Errors.ExitError) throw err;
       logger.error('scan failed:', err instanceof Error ? err.message : String(err));
       this.exit(3);
     }
