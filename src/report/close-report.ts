@@ -1,4 +1,8 @@
 import type { CloseResult } from '../close/index.js';
+import type { Manifest, Priority, UnitStatus } from '../schema/manifest.js';
+
+const PRIORITIES: Priority[] = ['P0', 'P1', 'P2'];
+const STATUSES: UnitStatus[] = ['COVERED', 'PARTIAL', 'GAP', 'REGRESSION', 'IGNORED'];
 
 export function renderCloseReport(result: CloseResult, generatedAtIso: string): string {
   const { outcome, unit, before, after, prompt, generatedTest, verify, reason } = result;
@@ -13,6 +17,7 @@ export function renderCloseReport(result: CloseResult, generatedAtIso: string): 
   lines.push(`- **Priority:** ${outcome.gapPriority}`);
   lines.push(`- **Agent outcome:** ${outcome.agentOutcome}`);
   if (outcome.verifyOutcome) lines.push(`- **Verify outcome:** ${outcome.verifyOutcome}`);
+  lines.push(`- **Gap closed:** ${outcome.gapClosed ? 'yes' : 'no'}`);
   lines.push(`- **Delta:** covered ${signed(outcome.delta.covered)}, partial ${signed(outcome.delta.partial)}`);
   if (reason) lines.push(`- **Reason:** ${reason}`);
   lines.push('');
@@ -27,6 +32,15 @@ export function renderCloseReport(result: CloseResult, generatedAtIso: string): 
     lines.push(`- **Status after:** ${afterStatus ?? '?'}`);
     lines.push('');
   }
+
+  lines.push(`## Coverage summary`);
+  lines.push('');
+  lines.push(renderCoverageTable(before, 'Before'));
+  lines.push('');
+  lines.push(renderCoverageTable(after, 'After'));
+  lines.push('');
+  lines.push(renderCoverageDelta(before, after));
+  lines.push('');
 
   if (prompt) {
     lines.push(`## Expected test file`);
@@ -64,6 +78,39 @@ export function renderCloseReport(result: CloseResult, generatedAtIso: string): 
   }
 
   return lines.join('\n');
+}
+
+function renderCoverageTable(manifest: Manifest, label: string): string {
+  const { units } = manifest;
+  const rows: string[] = [];
+  rows.push(`**${label}** — ${units.length} units total`);
+  rows.push('');
+  rows.push(`| Priority | ${STATUSES.join(' | ')} | Total |`);
+  rows.push(`| --- | ${STATUSES.map(() => '---').join(' | ')} | --- |`);
+  for (const p of PRIORITIES) {
+    const counts = STATUSES.map((s) => units.filter((u) => u.priority === p && u.status === s).length);
+    const total = counts.reduce((a, b) => a + b, 0);
+    rows.push(`| ${p} | ${counts.join(' | ')} | ${total} |`);
+  }
+  return rows.join('\n');
+}
+
+function renderCoverageDelta(before: Manifest, after: Manifest): string {
+  const rows: string[] = [];
+  rows.push('**Delta**');
+  rows.push('');
+  rows.push('| Priority | COVERED Δ | PARTIAL Δ | GAP Δ |');
+  rows.push('| --- | --- | --- | --- |');
+  for (const p of PRIORITIES) {
+    const delta = (['COVERED', 'PARTIAL', 'GAP'] as UnitStatus[]).map((s) => {
+      const bCount = before.units.filter((u) => u.priority === p && u.status === s).length;
+      const aCount = after.units.filter((u) => u.priority === p && u.status === s).length;
+      const d = aCount - bCount;
+      return d === 0 ? '0' : d > 0 ? `+${d}` : `${d}`;
+    });
+    rows.push(`| ${p} | ${delta.join(' | ')} |`);
+  }
+  return rows.join('\n');
 }
 
 function signed(n: number): string {
