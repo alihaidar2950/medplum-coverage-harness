@@ -497,6 +497,29 @@ Jest fails gracefully without a running app, MockClient is component-level, and 
 
 Conditions like `coverage >= 50%` are vulnerable to gaming by adding low-quality units. The default `until: p0-gaps == 0` is more meaningful but still relies on the priority assignment being correct. A more sophisticated harness would weight units by historical bug-density, clinical risk, or change frequency. Today, priority is a 3-bucket heuristic (P0/P1/P2) — defensible but not adaptive.
 
+### 11.9 `--verify` always reports `compile-failed` outside the medplum monorepo build
+
+`harness close --verify` invokes `npx jest <file>` inside `medplum/packages/app/`.
+The generated tests import from `@medplum/react`, `@medplum/mock`, and internal
+test utilities like `./test-utils/render`. Resolving those imports requires the
+full monorepo to have been built (`npm ci && npm run build` in the medplum root)
+so that `node_modules` contains the workspace-linked packages.
+
+When the harness is run against a freshly-cloned medplum repo without that build
+step, every test will fail with `SyntaxError` or `Cannot find module`. The
+`--verify` flag still produces accurate `compile-failed` outcomes, and the
+guardrails fire correctly (consecutive failures → stop), but the verify signal
+is structurally unusable until the target monorepo is fully built.
+
+**Mitigation today:** skip `--verify` until `medplum/packages/app/node_modules`
+is populated (`ls ../medplum/node_modules` is the quick check). The matcher
+still scores generated tests as COVERED from filename + MockClient pattern, so
+the delta is meaningful even without a passing Jest run.
+
+**Mitigation longer-term:** add a `harness doctor` preflight that checks whether
+the target repo's Jest environment is viable before any close/loop invocation
+(§11.5 retry-with-feedback would also surface the stderr so the user can act).
+
 ### 11.8 Manifest could explode at scale
 
 Today on `medplum/main`: 69 surfaces × 6 preconditions × 10 behaviors = 4,140 theoretical combinations. The category-driven behavior whitelist plus auth-aware precondition filtering trim that to **556 units** in practice. As the app grows, the whitelist itself would need automation or co-curation with developers as part of feature work — otherwise every new surface category requires a code change in `categorizeRoute`.

@@ -444,6 +444,12 @@ The `close` command picks one GAP and tries to fix it.
 └──────┬───────┘          │  compile-ok-tests-pass?  │
        │NO                │  compile-ok-tests-fail?  │
        │                  │  compile-failed?          │
+       │                  │                          │
+       │                  │  NOTE: always compile-   │
+       │                  │  failed if medplum hasn't│
+       │                  │  been built (npm ci +    │
+       │                  │  npm run build). See     │
+       │                  │  design.md §11.9.        │
        ▼                  └─────────────┬────────────┘
 ┌──────────────────────────────────────┐│
 │  Re-scan the whole repo               ◄┘

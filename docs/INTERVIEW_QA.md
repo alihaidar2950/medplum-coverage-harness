@@ -119,6 +119,18 @@ agent is producing trivially-passing tests." A test that asserts
 being completely useless. For that case I rely on (a) human review before
 merge and (b) the future mutation oracle.
 
+**Practical caveat — `--verify` against an unbuilt medplum monorepo:** the
+generated tests import `@medplum/react`, `@medplum/mock`, and internal
+test utilities (`./test-utils/render`). Those are only resolvable once the
+medplum monorepo has been built (`npm ci && npm run build` from the medplum
+root). Against a freshly-cloned repo, every `npx jest` invocation will fail
+with `Cannot find module`, so `verify=compile-failed` is the expected outcome
+and the guardrail fires after 3 consecutive failures. The coverage delta is
+still meaningful — the matcher scores from filename + MockClient pattern
+independently of Jest. Skip `--verify` until the target environment is built,
+or treat the guardrail as the signal to pause and set up the monorepo. This
+is tracked in design.md §11.9.
+
 ### Q8. The behavior classifier is regex-based. What happens when a test name doesn't match any keyword?
 
 The unit gets no behavior credit beyond `beh.renders` (which we award to any
